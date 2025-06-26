@@ -14,9 +14,9 @@ df.columns = df.columns.str.strip()
 
 # Zielgrößen
 targets = [
-    "Glanz 20", "Glanz 60", "Glanz 85",
-    "Viskosität lowshear", "Viskosität midshear", "Brookfield",
-    "Kosten Gesamt kg"
+    "Glanz20", "Glanz60", "Glanz85",
+    "Viskositätlowshear", "Viskositätmidshear", "Brookfield",
+    "KostenGesamtkg"
 ]
 targets = [t for t in targets if t in df.columns]
 for col in targets:
