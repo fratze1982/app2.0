@@ -88,11 +88,11 @@ with col2:
 # Einflussanalyse
 # ------------------------------
 st.markdown("---")
-st.header("📊 Einflussanalyse: Global vs. Dein Rezept")
+st.header("📊 Einflussanalyse: Global vs. Deine Rezeptur")
 
-# Feature und Zielgröße auswählen
-feature_name = st.selectbox("🔍 Rohstoff wählen", numerisch)
-target_name = st.selectbox("🎯 Zielgröße wählen", targets)
+# Auswahl der Feature- und Zielgröße
+feature_name = st.selectbox("🔍 Wähle Rohstoff / Feature", numerisch)
+target_name = st.selectbox("🎯 Wähle Zielgröße", targets)
 
 # Indexe berechnen
 feature_index = list(X_encoded.columns).index(feature_name)
@@ -117,11 +117,11 @@ PartialDependenceDisplay.from_estimator(
     feature_names=X_encoded_clean.columns,
     target=target_index,
     ax=ax,
-    line_kw={"label": "⛅ PDP (Globaler Mittelwert)", "color": "gray", "linestyle": "--"}
+    line_kw={"label": "⛅ PDP (Global)", "color": "gray", "linestyle": "--"}
 )
 
-# Sensitivität (dein Rezept)
-ax.plot(werte, sensi_preds, label="🔍 Sensitivität (Dein Rezept)", color="blue")
+# Sensitivität (deine Rezeptur)
+ax.plot(werte, sensi_preds, label="🔍 Sensitivität (Lokal)", color="blue")
 ax.set_xlabel(feature_name)
 ax.set_ylabel(target_name)
 ax.set_title(f"Einfluss von {feature_name} auf {target_name}")
