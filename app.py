@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
+import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.multioutput import MultiOutputRegressor
-from sklearn.inspection import partial_dependence
-import matplotlib.pyplot as plt
+from sklearn.inspection import PartialDependenceDisplay
 
 st.set_page_config(layout="wide")
 
@@ -12,7 +12,7 @@ st.set_page_config(layout="wide")
 df = pd.read_csv("rezeptdaten.csv", sep=";", decimal=",", encoding="utf-8")
 df.columns = df.columns.str.strip()
 
-# Zielspalten definieren
+# Zielgrößen definieren
 targets = [
     "Glanz 20", "Glanz 60", "Glanz 85",
     "Viskosität lowshear", "Viskosität midshear", "Brookfield",
@@ -28,7 +28,7 @@ for col in targets:
 X = df.drop(columns=targets)
 y = df[targets]
 
-# Feature-Typen bestimmen
+# Feature-Typen erkennen
 kategorisch = X.select_dtypes(include="object").columns.tolist()
 numerisch = X.select_dtypes(exclude="object").columns.tolist()
 
@@ -36,7 +36,7 @@ numerisch = X.select_dtypes(exclude="object").columns.tolist()
 X_encoded = pd.get_dummies(X)
 X_encoded = X_encoded.fillna(0)
 
-# Nur vollständige Zeilen für y
+# Nur vollständige Zeilen verwenden
 mask = y.notna().all(axis=1)
 X_encoded_clean = X_encoded.loc[mask]
 y_clean = y.loc[mask]
@@ -45,10 +45,11 @@ y_clean = y.loc[mask]
 modell = MultiOutputRegressor(RandomForestRegressor(n_estimators=150, random_state=42))
 modell.fit(X_encoded_clean, y_clean.values)
 
+# ------------------------------
 # Streamlit UI
+# ------------------------------
 st.title("🎨 KI-Analyse für Lackrezepturen")
 
-# Seitenlayout
 col1, col2 = st.columns(2)
 user_input = {}
 
@@ -83,42 +84,48 @@ with col2:
     for i, ziel in enumerate(targets):
         st.metric(label=ziel, value=round(prediction[i], 2))
 
-# -----------------------------------
-# PDP + Sensitivitätsanalyse kombinieren
-# -----------------------------------
-
+# ------------------------------
+# Einflussanalyse
+# ------------------------------
 st.markdown("---")
-st.header("📊 Einflussanalyse: Global vs. Deine Rezeptur")
+st.header("📊 Einflussanalyse: Global vs. Dein Rezept")
 
-# Auswahl Feature und Ziel
+# Feature und Zielgröße auswählen
 feature_name = st.selectbox("🔍 Rohstoff wählen", numerisch)
 target_name = st.selectbox("🎯 Zielgröße wählen", targets)
 
-# Indexe für Zugriff
+# Indexe berechnen
 feature_index = list(X_encoded.columns).index(feature_name)
 target_index = targets.index(target_name)
 
-# Wertebereich des Features erzeugen
+# Wertebereich für Sensitivitätsanalyse
 werte = np.linspace(df[feature_name].min(), df[feature_name].max(), 50)
-
-# Lokale Sensitivitätsanalyse
 base_input = input_encoded.iloc[0].copy()
 sensi_inputs = pd.DataFrame([base_input] * len(werte))
 sensi_inputs[feature_name] = werte
 sensi_inputs = sensi_inputs[X_encoded.columns]
 sensi_preds = modell.predict(sensi_inputs)[:, target_index]
 
-# Globale PDP
-pdp_result = partial_dependence(modell, X_encoded_clean, features=[feature_index], target=target_index)
-pdp_vals = pdp_result["average"][0]
-pdp_grid = pdp_result["values"][0]
-
-# Plot
+# Kombinierter Plot
 fig, ax = plt.subplots(figsize=(8, 5))
-ax.plot(pdp_grid, pdp_vals, label="⛅ PDP (Globaler Mittelwert)", color="gray", linestyle="--")
+
+# PDP global (durchschnittlich)
+PartialDependenceDisplay.from_estimator(
+    modell,
+    X_encoded_clean,
+    features=[feature_index],
+    feature_names=X_encoded_clean.columns,
+    target=target_index,
+    ax=ax,
+    line_kw={"label": "⛅ PDP (Globaler Mittelwert)", "color": "gray", "linestyle": "--"}
+)
+
+# Sensitivität (dein Rezept)
 ax.plot(werte, sensi_preds, label="🔍 Sensitivität (Dein Rezept)", color="blue")
 ax.set_xlabel(feature_name)
 ax.set_ylabel(target_name)
 ax.set_title(f"Einfluss von {feature_name} auf {target_name}")
 ax.legend()
+
+# Anzeige
 st.pyplot(fig)
